@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Smart health'),
+        title: const Text('Agora Video Call'),
       ),
       body: Center(
         child: Column(
@@ -193,13 +193,6 @@ class _VideoCallPageState extends State<VideoCallPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Video Call'),
-        actions: [
-          // End Call Button
-          IconButton(
-            icon: const Icon(Icons.call_end, color: Colors.red),
-            onPressed: _endCall,
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -231,15 +224,21 @@ class _VideoCallPageState extends State<VideoCallPage> {
                   // Mute Button
                   FloatingActionButton(
                     onPressed: _toggleMute,
-                    backgroundColor: _muted ? Colors.red : Colors.white,
+                    backgroundColor: _muted ? Colors.red : Colors.blue,
                     child: Icon(
                       _muted ? Icons.mic_off : Icons.mic,
                     ),
                   ),
-                  // Switch Camera Button
+                  // End Call Button (center)
+                  FloatingActionButton(
+                    onPressed: _endCall,
+                    backgroundColor: Colors.red,
+                    child: const Icon(Icons.call_end),
+                  ),
+                  // Switch Camera Button (right)
                   FloatingActionButton(
                     onPressed: _switchCamera,
-                    backgroundColor: Colors.white,
+                    backgroundColor: Colors.blue,
                     child: const Icon(Icons.cameraswitch),
                   ),
                 ],
