@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Agora Video Call'),
+        title: const Text('Smart health'),
       ),
       body: Center(
         child: Column(
@@ -97,6 +97,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   int? _remoteUid; // The UID of the remote user
   bool _localUserJoined = false; // Indicates whether the local user has joined the channel
   late RtcEngine _engine; // The RtcEngine instance
+  bool _muted = false; // Indicates whether the microphone is muted
 
   @override
   void initState() {
@@ -171,11 +172,34 @@ class _VideoCallPageState extends State<VideoCallPage> {
     await _engine.release();
   }
 
+  void _toggleMute() {
+    setState(() {
+      _muted = !_muted;
+    });
+    _engine.muteLocalAudioStream(_muted);
+  }
+
+  void _switchCamera() {
+    _engine.switchCamera();
+  }
+
+  void _endCall() {
+    _dispose();
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Video Call'),
+        actions: [
+          // End Call Button
+          IconButton(
+            icon: const Icon(Icons.call_end, color: Colors.red),
+            onPressed: _endCall,
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -194,6 +218,31 @@ class _VideoCallPageState extends State<VideoCallPage> {
                         ),
                       )
                     : const CircularProgressIndicator(),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Mute Button
+                  FloatingActionButton(
+                    onPressed: _toggleMute,
+                    backgroundColor: _muted ? Colors.red : Colors.white,
+                    child: Icon(
+                      _muted ? Icons.mic_off : Icons.mic,
+                    ),
+                  ),
+                  // Switch Camera Button
+                  FloatingActionButton(
+                    onPressed: _switchCamera,
+                    backgroundColor: Colors.white,
+                    child: const Icon(Icons.cameraswitch),
+                  ),
+                ],
               ),
             ),
           ),
