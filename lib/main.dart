@@ -1,31 +1,102 @@
 import 'dart:async';
-
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(const MyApp());
 
-// Fill in the app ID obtained from the Agora Console
-const appId = "9f3af90129574b278fc6c17d634807d1";
-// Fill in the temporary token generated from Agora Console
-const token = "007eJxTYLj9Yi/HitAsJznL+3M4d308XyLl0zfjfdJijoQ797yTrhxRYLBMM05MszQwNLI0NTdJMjK3SEs2SzY0TzEzNrEwME8x/BTukd4QyMgw3fwNKyMDBIL47AwlqcUlmXnpDAwABjAhxg==";
-// Fill in the channel name you used to generate the token
-const channel = "testing";
+// Fill in the App ID obtained from the Agora Console
+const appId = "f960e725feac454f8cba4633f5347af8"; // Replace with your Agora App ID
 
 // Application class
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
   @override
-  _MyAppState createState() => _MyAppState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(),
+    );
+  }
 }
 
-// Application state class
-class _MyAppState extends State<MyApp> {
+// Home page for creating/joining a channel
+class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final TextEditingController _channelController = TextEditingController();
+  bool _validateError = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Agora Video Call'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Channel name input
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: TextField(
+                controller: _channelController,
+                decoration: InputDecoration(
+                  errorText: _validateError ? 'Channel name is mandatory' : null,
+                  border: const OutlineInputBorder(),
+                  hintText: 'Enter Channel Name',
+                ),
+              ),
+            ),
+            // Join button
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _channelController.text.isEmpty
+                      ? _validateError = true
+                      : _validateError = false;
+                });
+                if (!_validateError) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VideoCallPage(
+                        channelName: _channelController.text,
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Join'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Video call page
+class VideoCallPage extends StatefulWidget {
+  final String channelName;
+
+  const VideoCallPage({Key? key, required this.channelName}) : super(key: key);
+
+  @override
+  _VideoCallPageState createState() => _VideoCallPageState();
+}
+
+class _VideoCallPageState extends State<VideoCallPage> {
   int? _remoteUid; // The UID of the remote user
   bool _localUserJoined = false; // Indicates whether the local user has joined the channel
-  late RtcEngine _engine; // The RtcEngine instances
+  late RtcEngine _engine; // The RtcEngine instance
 
   @override
   void initState() {
@@ -34,65 +105,58 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> initAgora() async {
-    // Get microphone and camera permissions
+    // Request permissions for microphone and camera
     await [Permission.microphone, Permission.camera].request();
 
-    // Create RtcEngine instance
+    // Create the RtcEngine instance
     _engine = await createAgoraRtcEngine();
 
-    // Initialize RtcEngine and set the channel profile to live broadcasting
+    // Initialize the RtcEngine
     await _engine.initialize(const RtcEngineContext(
       appId: appId,
       channelProfile: ChannelProfileType.channelProfileCommunication,
     ));
 
-    // Add an event handler
+    // Register event handlers
     _engine.registerEventHandler(
       RtcEngineEventHandler(
-        // Occurs when the local user joins the channel successfully
         onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
-          debugPrint('local user ' + connection.localUid.toString() + ' joined');
+          debugPrint('local user joined: ${connection.localUid}');
           setState(() {
             _localUserJoined = true;
           });
         },
-        // Occurs when a remote user join the channel
         onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
-          debugPrint("remote user $remoteUid joined");
+          debugPrint('remote user joined: $remoteUid');
           setState(() {
             _remoteUid = remoteUid;
           });
         },
-        // Occurs when a remote user leaves the channel
         onUserOffline: (RtcConnection connection, int remoteUid,
             UserOfflineReasonType reason) {
-          debugPrint("remote user $remoteUid left channel");
+          debugPrint('remote user left: $remoteUid');
           setState(() {
             _remoteUid = null;
           });
         },
       ),
     );
-    // Enable the video module
+
+    // Enable video
     await _engine.enableVideo();
-    // Enable local video preview
-    await _engine.startPreview();
-    // Join a channel using a temporary token and channel name
+
+    // Join the channel
     await _engine.joinChannel(
-      token: token,
-      channelId: channel,
+      token: "", // No token required
+      channelId: widget.channelName,
       options: const ChannelMediaOptions(
-        // Automatically subscribe to all video streams
         autoSubscribeVideo: true,
-        // Automatically subscribe to all audio streams
         autoSubscribeAudio: true,
-        // Publish camera video 
         publishCameraTrack: true,
-        // Publish microphone audio 
         publishMicrophoneTrack: true,
-        // Set user role to clientRoleBroadcaster (broadcaster) or clientRoleAudience (audience)
-        clientRoleType: ClientRoleType.clientRoleBroadcaster),
-      uid: 0, // When you set uid to 0, a user name is randomly generated by the engine
+        clientRoleType: ClientRoleType.clientRoleBroadcaster,
+      ),
+      uid: 0, // Generate a random UID
     );
   }
 
@@ -103,56 +167,49 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _dispose() async {
-    // Leave the channel
     await _engine.leaveChannel();
-    // Release resources
-    await _engine.release(); 
+    await _engine.release();
   }
 
-  // Build the UI to display local and remote videos
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Agora Video Call'),
-        ),
-        body: Stack(
-          children: [
-            Center(
-              child: _remoteVideo(),
-            ),
-            Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(
-                width: 100,
-                height: 150,
-                child: Center(
-                  child: _localUserJoined
-                      ? AgoraVideoView(
-                          controller: VideoViewController(
-                            rtcEngine: _engine,
-                            canvas: const VideoCanvas(uid: 0),
-                          ),
-                        )
-                      : const CircularProgressIndicator(),
-                ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Video Call'),
+      ),
+      body: Stack(
+        children: [
+          Center(child: _remoteVideo()),
+          Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 100,
+              height: 150,
+              child: Center(
+                child: _localUserJoined
+                    ? AgoraVideoView(
+                        controller: VideoViewController(
+                          rtcEngine: _engine,
+                          canvas: const VideoCanvas(uid: 0),
+                        ),
+                      )
+                    : const CircularProgressIndicator(),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // Widget to display remote video
+  // Remote video widget
   Widget _remoteVideo() {
     if (_remoteUid != null) {
       return AgoraVideoView(
         controller: VideoViewController.remote(
           rtcEngine: _engine,
           canvas: VideoCanvas(uid: _remoteUid),
-          connection: const RtcConnection(channelId: channel),
+          connection: RtcConnection(channelId: widget.channelName),
         ),
       );
     } else {
